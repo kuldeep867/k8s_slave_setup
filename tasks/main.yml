@@ -1,0 +1,64 @@
+---
+# tasks file for slave
+- name: installing docker
+  package:
+    name: docker
+    state: present
+
+- name: configuring yum repo for k8s
+  yum_repository:
+    name: kubernetes
+    description: 'Kubernetes'
+    baseurl: https://packages.cloud.google.com/yum/repos/kubernetes-el7-\$basearch
+    enabled: yes
+    gpgcheck: yes
+    repo_gpgcheck: yes
+    gpgkey: https://packages.cloud.google.com/yum/doc/yum-key.gpg https://packages.cloud.google.com/yum/doc/rpm-package-key.gpg
+    exclude:
+     - kubelet
+     - kubeadm
+     - kubectl
+
+- name: installing kubeadm
+  yum:
+    name: kubeadm
+    disable_excludes: "kubernetes"
+
+- name: starting docker services
+  service:
+          name: docker
+          state: "started"
+          enabled: yes
+- name: installing iproute-tc
+  package:
+    name: "iproute-tc"
+    state: present
+
+- name: starting kubelet services
+  service:
+          name: kubelet
+          state: "started"
+          enabled: yes
+
+- name: pulling all images
+  shell: kubeadm config images pull
+
+- name: copying content of the daemon.json file
+  copy:
+    dest: /etc/docker/daemon.json
+    src:  daemon.json
+
+- name: copying kubernetes conf file
+  copy:
+    dest: /etc/sysctl.d/kubernetes.conf
+    src: kubernetes.conf
+
+- name: refreshing sysctl
+  shell: "sysctl --system"
+
+- name: restarting docker services
+  service:
+          name: docker
+          state: "restarted"
+
+
